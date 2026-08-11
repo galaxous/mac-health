@@ -11,6 +11,46 @@ EOF
 }
 
 mh_cmd_maintenance_report() {
+  if mh_json_mode; then
+    {
+      print '===CACHES==='
+      mh_cmd_caches_list
+      print '===DOCKER==='
+      mh_cmd_docker_status
+    } | python3 -c '
+import json, sys
+chunks = {"caches": [], "docker": []}
+cur = None
+buf = []
+for raw in sys.stdin:
+    line = raw.rstrip("\n")
+    if line == "===CACHES===":
+        if cur and buf:
+            chunks[cur] = "".join(buf)
+        cur = "caches"
+        buf = []
+        continue
+    if line == "===DOCKER===":
+        if cur and buf:
+            chunks[cur] = "".join(buf)
+        cur = "docker"
+        buf = []
+        continue
+    if cur is not None:
+        buf.append(raw)
+if cur and buf:
+    chunks[cur] = "".join(buf)
+doc = {
+    "command": "maintenance",
+    "action": "report",
+    "caches": json.loads(chunks["caches"]) if chunks.get("caches") else None,
+    "docker": json.loads(chunks["docker"]) if chunks.get("docker") else None,
+}
+print(json.dumps(doc, indent=2, ensure_ascii=False))
+'
+    return 0
+  fi
+
   mh_section "Monthly size report"
   mh_cmd_caches_list
   print

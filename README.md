@@ -77,6 +77,8 @@ On a 16 GB Mac, Docker, Chrome, IDEs, and app caches often pile up. `mac-health`
 ```bash
 mac-health                     # default: health check (RAM, disk, heavy paths)
 mac-health health              # same
+mac-health memory              # detailed RAM: pressure, top RSS, app families
+mac-health memory --top 25
 mac-health purge               # sudo purge (temporary relief)
 mac-health caches list         # sizes + IDE breakdown
 mac-health caches code         # VS Code safe caches (quit Code)
@@ -96,6 +98,20 @@ mac-health projects <root> …   # scan/purge vendor + node_modules (see below)
 mac-health paths               # print central MH_* paths
 mac-health version             # version + install root
 mac-health uninstall           # remove install + PATH block
+```
+
+### JSON output
+
+Pass `--json` (before or after the command) for machine-readable stdout. Human UI is suppressed; warnings/errors go to stderr. Destructive actions still need `-y`. Conventions and schema notes live in [`AGENTS.md`](./AGENTS.md).
+
+```bash
+mac-health --json version
+mac-health memory --json --top 25
+mac-health --json caches list
+mac-health --json projects ~/Desktop/Projects.nosync npm
+mac-health -y --json caches npm
+mac-health --json docker status
+mac-health --json maintenance report
 ```
 
 ### Projects deps (`vendor` / `node_modules`)
@@ -122,11 +138,13 @@ mac-health -y projects ~/Desktop/Projects.nosync all --apply
 | `--no-interaction`         | Same as `-y`: no confirm on `--apply`                                                                      |
 | `--exclude <regex>`        | Skip relative paths matching (repeatable)                                                                  |
 | `--include <regex>`        | If set, keep only matching relative paths                                                                  |
+| `--json`                   | Machine-readable JSON on stdout (see `AGENTS.md`)                                                          |
 
-Global flag:
+Global flags:
 
 ```bash
 mac-health -y caches npm       # skip confirmation prompts
+mac-health --json memory       # JSON on stdout
 ```
 
 ## Layout
@@ -139,11 +157,13 @@ uninstall.sh          # remote/local uninstaller
 uninstall.zsh         # thin wrapper → uninstall.sh
 mac-health            # CLI entry
 VERSION               # semver / alpha label
+AGENTS.md             # CLI / --json conventions for humans & agents
 lib/
   paths.zsh           # central paths (MH_*)
-  common.zsh          # helpers
+  common.zsh          # helpers (+ JSON mode)
 commands/
   health.zsh
+  memory.zsh          # detailed RAM / process families
   purge.zsh
   caches.zsh
   docker.zsh

@@ -17,6 +17,7 @@ Flags:
   (default)           Dry-run: list matches + sizes (no delete)
   --apply             Delete matched directories
   --no-interaction    Skip confirm on --apply (same as mac-health -y)
+  --json              Machine-readable JSON on stdout
   --maxDepth <n>      Max project nesting under root (default: 1)
                       1 = root/<project>/vendor|node_modules only
                       2 = also root/<a>/<b>/vendor|node_modules, etc.
@@ -302,7 +303,25 @@ mh_cmd_projects() {
   done
 
   if (( ${#matched} == 0 )); then
-    mh_ok "No matching directories"
+    if mh_json_mode; then
+      MH_JSON_ROOT="$root" MH_JSON_TARGET="$target" MH_JSON_DEPTH="$max_depth" \
+      MH_JSON_MODE="$([[ $apply -eq 1 ]] && print apply || print dry-run)" \
+      mh_json_doc <<'PY'
+import os
+doc = {
+    "command": "projects",
+    "root": os.environ["MH_JSON_ROOT"],
+    "target": os.environ["MH_JSON_TARGET"],
+    "max_depth": int(os.environ["MH_JSON_DEPTH"]),
+    "mode": os.environ["MH_JSON_MODE"],
+    "matches": [],
+    "total_bytes": 0,
+    "count": 0,
+}
+PY
+    else
+      mh_ok "No matching directories"
+    fi
     return 0
   fi
 
@@ -321,35 +340,92 @@ mh_cmd_projects() {
   local -a sorted
   sorted=("${(@f)$(printf '%s\n' "${rows[@]}" | /usr/bin/sort -t'|' -nr -k1)}")
 
-  print
-  printf "  %-10s  %s\n" "SIZE" "PATH"
-  printf "  %-10s  %s\n" "----------" "----"
-  local row size_h path_abs
-  for row in "${sorted[@]}"; do
-    # format: kb|abspath|human  (abspath has no '|')
-    kb="${row%%|*}"
-    size_h="${row##*|}"
-    path_abs="${row#*|}"
-    path_abs="${path_abs%|*}"
-    printf "  %-10s  %s\n" "$size_h" "$path_abs"
-  done
-
   local total_h
   total_h="$(mh_projects_human_bytes "$total_bytes")"
-  print
-  mh_log "${#matched} directories · reclaimable ~${total_h}"
 
   if (( ! apply )); then
+    if mh_json_mode; then
+      {
+        print "root=${root}"
+        print "target=${target}"
+        print "max_depth=${max_depth}"
+        print "mode=dry-run"
+        print "total_bytes=${total_bytes}"
+        print "count=${#matched}"
+        print -r -- "===matches==="
+        local row size_h path_abs
+        for row in "${sorted[@]}"; do
+          kb="${row%%|*}"
+          size_h="${row##*|}"
+          path_abs="${row#*|}"
+          path_abs="${path_abs%|*}"
+          print "${path_abs}|$(( kb * 1024 ))|${size_h}"
+        done
+      } | python3 -c '
+import json, sys
+meta = {}
+matches = []
+section = "meta"
+for raw in sys.stdin:
+    line = raw.rstrip("\n")
+    if line == "===matches===":
+        section = "matches"
+        continue
+    if section == "meta":
+        if "=" in line:
+            k, v = line.split("=", 1)
+            meta[k] = v
+    elif section == "matches":
+        if not line:
+            continue
+        path, nbytes, human = line.split("|", 2)
+        matches.append({"path": path, "bytes": int(nbytes), "human": human})
+doc = {
+    "command": "projects",
+    "root": meta.get("root"),
+    "target": meta.get("target"),
+    "max_depth": int(meta.get("max_depth") or 1),
+    "mode": "dry-run",
+    "matches": matches,
+    "total_bytes": int(meta.get("total_bytes") or 0),
+    "count": int(meta.get("count") or 0),
+}
+print(json.dumps(doc, indent=2, ensure_ascii=False))
+'
+      return 0
+    fi
+
+    print
+    printf "  %-10s  %s\n" "SIZE" "PATH"
+    printf "  %-10s  %s\n" "----------" "----"
+    local row size_h path_abs
+    for row in "${sorted[@]}"; do
+      kb="${row%%|*}"
+      size_h="${row##*|}"
+      path_abs="${row#*|}"
+      path_abs="${path_abs%|*}"
+      printf "  %-10s  %s\n" "$size_h" "$path_abs"
+    done
+
+    print
+    mh_log "${#matched} directories · reclaimable ~${total_h}"
     mh_warn "Dry-run only. Re-run with --apply to delete."
     return 0
   fi
 
   if ! mh_confirm "Delete ${#matched} directories (~${total_h}) under ${root}?"; then
-    mh_warn "Cancelled"
+    if mh_json_mode; then
+      mh_json_doc <<'PY'
+doc = {"command": "projects", "ok": False, "cancelled": True}
+PY
+    else
+      mh_warn "Cancelled"
+    fi
     return 1
   fi
 
   local deleted=0
+  local -a deleted_paths=()
   for full in "${matched[@]}"; do
     if [[ ! -d "$full" ]]; then
       mh_warn "Skip (missing): $full"
@@ -365,7 +441,50 @@ mh_cmd_projects() {
     rm -rf "$full"
     mh_ok "Removed $full"
     deleted=$(( deleted + 1 ))
+    deleted_paths+=("$full")
   done
+
+  if mh_json_mode; then
+    {
+      print "root=${root}"
+      print "target=${target}"
+      print "max_depth=${max_depth}"
+      print "total_bytes=${total_bytes}"
+      print "deleted=${deleted}"
+      print -r -- "===deleted==="
+      printf '%s\n' "${deleted_paths[@]}"
+    } | python3 -c '
+import json, sys
+meta = {}
+deleted_paths = []
+section = "meta"
+for raw in sys.stdin:
+    line = raw.rstrip("\n")
+    if line == "===deleted===":
+        section = "deleted"
+        continue
+    if section == "meta":
+        if "=" in line:
+            k, v = line.split("=", 1)
+            meta[k] = v
+    elif section == "deleted":
+        if line:
+            deleted_paths.append(line)
+doc = {
+    "command": "projects",
+    "ok": True,
+    "root": meta.get("root"),
+    "target": meta.get("target"),
+    "max_depth": int(meta.get("max_depth") or 1),
+    "mode": "apply",
+    "deleted": int(meta.get("deleted") or 0),
+    "deleted_paths": deleted_paths,
+    "total_bytes": int(meta.get("total_bytes") or 0),
+}
+print(json.dumps(doc, indent=2, ensure_ascii=False))
+'
+    return 0
+  fi
 
   mh_ok "Deleted ${deleted} directories (~${total_h})"
 }

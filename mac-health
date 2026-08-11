@@ -8,6 +8,7 @@
 #
 # Commands:
 #   health          Memory / disk / heavy-path check (default)
+#   memory          Detailed RAM: pressure, top RSS, app families
 #   purge           sudo purge (instant reclaim)
 #   caches          Cache cleanup group (see: caches help)
 #   docker          Docker cleanup group (see: docker help)
@@ -26,12 +27,17 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PA
 
 typeset -g MH_ROOT="${0:A:h}"
 typeset -g MH_YES=0
+typeset -g MH_JSON=0
 
 # Parse global flags before command
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -y|--yes)
       MH_YES=1
+      shift
+      ;;
+    --json)
+      MH_JSON=1
       shift
       ;;
     -h|--help)
@@ -59,11 +65,16 @@ mac-health — MacBook hygiene toolkit
 Root: ${MH_ROOT}
 
 Usage:
-  mac-health [-y] <command> [args...]
+  mac-health [-y] [--json] <command> [args...]
   mac-health                 # same as: mac-health health
+
+Global flags:
+  -y, --yes              Auto-confirm prompts
+  --json                 Machine-readable JSON on stdout (see AGENTS.md)
 
 Commands:
   health                 System check (RAM, disk, heavy paths) [default]
+  memory [--top N]       Detailed RAM: pressure, top RSS, app families
   purge                  Instant memory purge (sudo)
   caches <target>        Cache cleanup (all|list|spotify|chrome|npm|…)
   docker <action>        Docker tools (status|soft|prune|quit)
@@ -77,16 +88,14 @@ Commands:
 
 Examples:
   mac-health
+  mac-health --json memory
+  mac-health memory --json --top 25
+  mac-health --json caches list
+  mac-health --json projects ~/Desktop/Projects.nosync composer
   mac-health health
   mac-health caches list
-  mac-health caches spotify
   mac-health -y caches npm
   mac-health docker status
-  mac-health docker prune
-  mac-health maintenance monthly
-  mac-health projects ~/Desktop/Projects.nosync composer
-  mac-health projects ~/Desktop/Projects.nosync all --exclude 'b2press-cms'
-  mac-health -y projects ~/Desktop/Projects.nosync npm --apply
   mac-health uninstall
 EOF
 }
@@ -118,11 +127,55 @@ mh_cmd_version() {
     ver="$(<"${MH_ROOT}/VERSION")"
     ver="${ver%%$'\n'*}"
   fi
+  if mh_json_mode; then
+    MH_JSON_VER="$ver" MH_JSON_ROOT="$MH_ROOT" mh_json_doc <<'PY'
+import os
+doc = {
+    "command": "version",
+    "version": os.environ["MH_JSON_VER"],
+    "root": os.environ["MH_JSON_ROOT"],
+}
+PY
+    return 0
+  fi
   print "mac-health ${ver}"
   print "root: ${MH_ROOT}"
 }
 
 mh_cmd_paths() {
+  if mh_json_mode; then
+    {
+      print "MH_ROOT=${MH_ROOT}"
+      print "MH_HOME=${MH_HOME}"
+      print "MH_CACHES=${MH_CACHES}"
+      print "MH_CACHE_SPOTIFY=${MH_CACHE_SPOTIFY}"
+      print "MH_CACHE_CHROME=${MH_CACHE_CHROME}"
+      print "MH_CACHE_HOMEBREW=${MH_CACHE_HOMEBREW}"
+      print "MH_CACHE_COMPOSER=${MH_CACHE_COMPOSER}"
+      print "MH_NPM_CACHE=${MH_NPM_CACHE}"
+      print "MH_CURSOR_SUPPORT=${MH_CURSOR_SUPPORT}"
+      print "MH_CURSOR_CACHE=${MH_CURSOR_CACHE}"
+      print "MH_CURSOR_CACHED_DATA=${MH_CURSOR_CACHED_DATA}"
+      print "MH_CODE_SUPPORT=${MH_CODE_SUPPORT}"
+      print "MH_CHROME_SW=${MH_CHROME_SW}"
+      print "MH_DOCKER_CONTAINERS=${MH_DOCKER_CONTAINERS}"
+      print "MH_DOCKER_HOME=${MH_DOCKER_HOME}"
+      print "MH_LAUNCH_AGENTS=${MH_LAUNCH_AGENTS}"
+      print "MH_LOGS=${MH_LOGS}"
+      print "MH_PROJECTS=${MH_PROJECTS}"
+    } | python3 -c '
+import json, sys
+paths = {}
+for line in sys.stdin:
+    line = line.rstrip("\n")
+    if not line or "=" not in line:
+        continue
+    k, v = line.split("=", 1)
+    paths[k] = v
+print(json.dumps({"command": "paths", "paths": paths}, indent=2, ensure_ascii=False))
+'
+    return 0
+  fi
   mh_section "Central paths (MH_*)"
   print "  MH_ROOT                      ${MH_ROOT}"
   print "  MH_HOME                      ${MH_HOME}"
@@ -152,9 +205,34 @@ mh_cmd_paths() {
 typeset cmd="${1:-health}"
 [[ $# -gt 0 ]] && shift
 
+# Allow global flags after the command name too:
+#   mac-health memory --json --top 25
+#   mac-health -y caches npm
+typeset -a _mh_args
+_mh_args=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --json)
+      MH_JSON=1
+      shift
+      ;;
+    -y|--yes|--no-interaction)
+      MH_YES=1
+      shift
+      ;;
+    *)
+      _mh_args+=("$1")
+      shift
+      ;;
+  esac
+done
+set -- "${_mh_args[@]}"
+unset _mh_args
+
 case "$cmd" in
   help) mh_usage ;;
   health|check|checkhealth) mh_cmd_health "$@" ;;
+  memory|mem|ram) mh_cmd_memory "$@" ;;
   purge) mh_cmd_purge "$@" ;;
   caches|cache) mh_cmd_caches "$@" ;;
   docker) mh_cmd_docker "$@" ;;
