@@ -15,7 +15,7 @@ Then:
 ```bash
 source ~/.zshrc   # if PATH was just added
 mac-health help
-mac-health health
+mac-health                 # same as: mac-health health
 mac-health version
 ```
 
@@ -75,7 +75,8 @@ On a 16 GB Mac, Docker, Chrome, IDEs, and app caches often pile up. `mac-health`
 ## Usage
 
 ```bash
-mac-health health              # RAM, disk, heavy paths
+mac-health                     # default: health check (RAM, disk, heavy paths)
+mac-health health              # same
 mac-health purge               # sudo purge (temporary relief)
 mac-health caches list         # sizes + IDE breakdown
 mac-health caches code         # VS Code safe caches (quit Code)

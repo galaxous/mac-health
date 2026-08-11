@@ -144,6 +144,6 @@ if [[ -f "${PREFIX}/VERSION" ]]; then
 fi
 echo
 echo "Try:"
-echo "  mac-health help"
-echo "  mac-health health"
+echo "  mac-health"
+echo "  mac-health caches list"
 echo "  mac-health version"

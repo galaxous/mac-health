@@ -2,11 +2,12 @@
 # mac-health — MacBook memory/CPU hygiene toolkit
 #
 # Usage:
+#   mac-health                  # default: health
 #   mac-health <command> [args...]
-#   mac-health -y <command> ...     # auto-confirm prompts
+#   mac-health -y <command> ... # auto-confirm prompts
 #
 # Commands:
-#   health          Memory / disk / heavy-path check
+#   health          Memory / disk / heavy-path check (default)
 #   purge           sudo purge (instant reclaim)
 #   caches          Cache cleanup group (see: caches help)
 #   docker          Docker cleanup group (see: docker help)
@@ -59,9 +60,10 @@ Root: ${MH_ROOT}
 
 Usage:
   mac-health [-y] <command> [args...]
+  mac-health                 # same as: mac-health health
 
 Commands:
-  health                 System check (RAM, disk, heavy paths)
+  health                 System check (RAM, disk, heavy paths) [default]
   purge                  Instant memory purge (sudo)
   caches <target>        Cache cleanup (all|list|spotify|chrome|npm|…)
   docker <action>        Docker tools (status|soft|prune|quit)
@@ -74,6 +76,7 @@ Commands:
   help                   Show this help
 
 Examples:
+  mac-health
   mac-health health
   mac-health caches list
   mac-health caches spotify
@@ -146,7 +149,7 @@ mh_cmd_paths() {
   done
 }
 
-typeset cmd="${1:-help}"
+typeset cmd="${1:-health}"
 [[ $# -gt 0 ]] && shift
 
 case "$cmd" in
