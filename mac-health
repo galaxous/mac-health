@@ -8,8 +8,11 @@
 #
 # Commands:
 #   health          Memory / disk / heavy-path check (default)
+#   analyze         One-shot advice (RAM + disk + actions)
 #   memory          Detailed RAM: pressure, top RSS, app families
 #   watch           Live refresh (memory) like top/htop
+#   disk            Data volume + Library / bloat inventory
+#   trash           Trash size / empty
 #   purge           sudo purge (instant reclaim)
 #   caches          Cache cleanup group (see: caches help)
 #   docker          Docker cleanup group (see: docker help)
@@ -75,8 +78,11 @@ Global flags:
 
 Commands:
   health                 System check (RAM, disk, heavy paths) [default]
+  analyze                Advice: pressure + Data + top actions (alias: advise)
   memory [--top N]       Detailed RAM: pressure, top RSS, app families
   watch [memory] [-n N]  Live refresh (Ctrl+C quit; human UI only)
+  disk [status|bloat]    Data volume + Library / known bloat (inspect)
+  trash [status|empty]   Trash size or empty (~/.Trash)
   purge                  Instant memory purge (sudo)
   caches <target>        Cache cleanup (all|list|spotify|chrome|npm|…)
   docker <action>        Docker tools (status|volumes|prune images|quit)
@@ -92,8 +98,12 @@ Examples:
   mac-health
   mac-health --json memory
   mac-health memory --json --top 25
+  mac-health analyze
+  mac-health disk bloat
+  mac-health trash
   mac-health watch
   mac-health watch memory -n 1 --top 25
+  mac-health --json analyze
   mac-health --json caches list
   mac-health --json projects ~/Desktop/Projects.nosync composer
   mac-health health
@@ -164,6 +174,11 @@ mh_cmd_paths() {
       print "MH_CHROME_SW=${MH_CHROME_SW}"
       print "MH_DOCKER_CONTAINERS=${MH_DOCKER_CONTAINERS}"
       print "MH_DOCKER_HOME=${MH_DOCKER_HOME}"
+      print "MH_DEVELOPER=${MH_DEVELOPER}"
+      print "MH_XCODE_DERIVED=${MH_XCODE_DERIVED}"
+      print "MH_XCODE_ARCHIVES=${MH_XCODE_ARCHIVES}"
+      print "MH_CORESIMULATOR=${MH_CORESIMULATOR}"
+      print "MH_TRASH=${MH_TRASH}"
       print "MH_LAUNCH_AGENTS=${MH_LAUNCH_AGENTS}"
       print "MH_LOGS=${MH_LOGS}"
       print "MH_PROJECTS=${MH_PROJECTS}"
@@ -196,6 +211,11 @@ print(json.dumps({"command": "paths", "paths": paths}, indent=2, ensure_ascii=Fa
   print "  MH_CHROME_SW                 ${MH_CHROME_SW}"
   print "  MH_DOCKER_CONTAINERS         ${MH_DOCKER_CONTAINERS}"
   print "  MH_DOCKER_HOME               ${MH_DOCKER_HOME}"
+  print "  MH_DEVELOPER                 ${MH_DEVELOPER}"
+  print "  MH_XCODE_DERIVED             ${MH_XCODE_DERIVED}"
+  print "  MH_XCODE_ARCHIVES            ${MH_XCODE_ARCHIVES}"
+  print "  MH_CORESIMULATOR             ${MH_CORESIMULATOR}"
+  print "  MH_TRASH                     ${MH_TRASH}"
   print "  MH_LAUNCH_AGENTS             ${MH_LAUNCH_AGENTS}"
   print "  MH_LOGS                      ${MH_LOGS}"
   print "  MH_PROJECTS                  ${MH_PROJECTS}"
@@ -236,8 +256,11 @@ unset _mh_args
 case "$cmd" in
   help) mh_usage ;;
   health|check|checkhealth) mh_cmd_health "$@" ;;
+  analyze|advise) mh_cmd_analyze "$@" ;;
   memory|mem|ram) mh_cmd_memory "$@" ;;
   watch) mh_cmd_watch "$@" ;;
+  disk) mh_cmd_disk "$@" ;;
+  trash) mh_cmd_trash "$@" ;;
   purge) mh_cmd_purge "$@" ;;
   caches|cache) mh_cmd_caches "$@" ;;
   docker) mh_cmd_docker "$@" ;;

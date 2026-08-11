@@ -55,21 +55,72 @@ print(json.dumps(doc, indent=2, ensure_ascii=False))
 mh_human_size() {
   local path="$1" out
   if [[ -e "$path" ]]; then
-    out="$(/usr/bin/du -sh "$path" 2>/dev/null)"
-    print "${out%%$'\t'*}"
+    out="$(/usr/bin/du -sh "$path" 2>/dev/null || true)"
+    if [[ -n "$out" ]]; then
+      print "${out%%$'\t'*}"
+    else
+      print "—"
+    fi
   else
     print "—"
   fi
 }
 
 mh_dir_size_bytes() {
-  local path="$1" out
+  local path="$1" out kb
   if [[ -e "$path" ]]; then
-    out="$(/usr/bin/du -sk "$path" 2>/dev/null)"
-    print $(( ${out%%$'\t'*} * 1024 ))
+    out="$(/usr/bin/du -sk "$path" 2>/dev/null || true)"
+    kb="${out%%$'\t'*}"
+    if [[ "$kb" =~ ^[0-9]+$ ]]; then
+      print $(( kb * 1024 ))
+    else
+      print 0
+    fi
   else
     print 0
   fi
+}
+
+# Timed du for huge trees (Containers, Developer, ...). On timeout: bytes=-1, human=...
+# Usage: mh_dir_size_timed <path> [seconds] → prints "bytes|human"
+mh_dir_size_timed() {
+  local path="$1"
+  local sec="${2:-8}"
+  local out kb human rc
+
+  if [[ ! -e "$path" ]]; then
+    print -r -- "0|—"
+    return 0
+  fi
+
+  # perl alarm avoids hanging forever on deep trees
+  out="$(/usr/bin/perl -e 'alarm shift; exec @ARGV' "$sec" /usr/bin/du -sk "$path" 2>/dev/null)"
+  rc=$?
+  if (( rc != 0 )); then
+    if (( rc == 142 || rc == 255 || rc > 128 )); then
+      print -r -- "-1|..."
+    else
+      print -r -- "0|—"
+    fi
+    return 0
+  fi
+
+  kb="${out%%$'\t'*}"
+  kb="${kb##[[:space:]]#}"
+  if [[ ! "$kb" =~ ^[0-9]+$ ]]; then
+    print -r -- "0|—"
+    return 0
+  fi
+  human="$(/usr/bin/awk -v k="$kb" 'BEGIN {
+    b = k * 1024
+    if (b < 1024) { printf "%dB", b; exit }
+    split("KB MB GB TB", u, " ")
+    n = b; i = 0
+    while (n >= 1024 && i < 4) { n /= 1024; i++ }
+    if (n >= 10 || i == 0) printf "%.0f%s", n, u[i]
+    else printf "%.1f%s", n, u[i]
+  }')"
+  print -r -- "$(( kb * 1024 ))|${human}"
 }
 
 mh_confirm() {

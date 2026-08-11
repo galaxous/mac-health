@@ -33,8 +33,13 @@ When `MH_JSON=1` (via `--json`):
 | `version` | `{version, root}` |
 | `paths` | `{paths: {MH_*: …}}` |
 | `health` | hardware, os, memory, disk (`primary` = Data volume), heavy_paths, launch_agents |
+| `analyze` | advice snapshot: memory, disk, trash, families, notable_bloat, `actions` (max 3) |
 | `memory` | vm, processes, families, hints (`--top N` still applies) |
 | `watch` | **No JSON** — TTY in-place memory refresh (`--interval` / `--top`; alt screen, no full clear flash) |
+| `disk` / `disk status` | primary Data volume + `~/Library` buckets |
+| `disk bloat` | known fat paths + hints (inspect only) |
+| `trash status` | `{path, bytes, human}` |
+| `trash empty` | `{ok, …}` (requires `-y` when confirm would prompt) |
 | `caches list` | caches / vscode / cursor size inventories |
 | `caches <target>` | mutator result `{action, ok}` (requires `-y` when confirm would prompt) |
 | `projects` | dry-run inventory or apply summary |
@@ -52,6 +57,9 @@ When `MH_JSON=1` (via `--json`):
 
 ```bash
 mac-health --json version
+mac-health --json analyze
+mac-health --json disk bloat
+mac-health --json trash status
 mac-health memory --json --top 25
 mac-health --json caches list
 mac-health --json projects ~/Desktop/Projects.nosync npm
@@ -62,6 +70,7 @@ mac-health --json docker prune images --dry-run
 mac-health -y --json docker prune images
 mac-health --json login list
 mac-health --json maintenance report
+mac-health -y --json trash empty
 ```
 
 ### Schema sketch

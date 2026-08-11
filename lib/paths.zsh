@@ -49,6 +49,13 @@ typeset -g MH_NPM_CACHE="${MH_HOME}/.npm"
 typeset -g MH_DOCKER_HOME="${MH_HOME}/.docker"
 typeset -g MH_DOCKER_CONTAINERS="${MH_LIBRARY}/Containers/com.docker.docker"
 
+# Developer / Xcode (disk bloat candidates)
+typeset -g MH_DEVELOPER="${MH_LIBRARY}/Developer"
+typeset -g MH_XCODE_DERIVED="${MH_DEVELOPER}/Xcode/DerivedData"
+typeset -g MH_XCODE_ARCHIVES="${MH_DEVELOPER}/Xcode/Archives"
+typeset -g MH_CORESIMULATOR="${MH_DEVELOPER}/CoreSimulator"
+typeset -g MH_CONTAINERS="${MH_LIBRARY}/Containers"
+
 # Projects (size reports)
 typeset -g MH_PROJECTS="${MH_HOME}/Desktop/Projects.nosync"
 

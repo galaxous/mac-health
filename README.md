@@ -77,6 +77,11 @@ On a 16 GB Mac, Docker, Chrome, IDEs, and app caches often pile up. `mac-health`
 ```bash
 mac-health                     # default: health check (RAM, disk, heavy paths)
 mac-health health              # same
+mac-health analyze             # advice: pressure + Data + up to 3 next commands
+mac-health disk                # Data volume + ~/Library buckets
+mac-health disk bloat          # known fat paths + cleanup hints
+mac-health trash               # Trash size
+mac-health trash empty         # empty ~/.Trash (confirm / -y)
 mac-health memory              # detailed RAM: pressure, top RSS, app families
 mac-health memory --top 25
 mac-health watch               # live memory (in-place redraw, Ctrl+C)
@@ -109,6 +114,10 @@ Pass `--json` (before or after the command) for machine-readable stdout. Human U
 
 ```bash
 mac-health --json version
+mac-health --json analyze
+mac-health --json disk status
+mac-health --json disk bloat
+mac-health --json trash status
 mac-health memory --json --top 25
 mac-health --json caches list
 mac-health --json projects ~/Desktop/Projects.nosync npm
@@ -116,6 +125,7 @@ mac-health -y --json caches npm
 mac-health --json docker status
 mac-health --json docker volumes
 mac-health --json maintenance report
+mac-health -y --json trash empty
 ```
 
 ### Docker (inspect vs prune images)
@@ -178,8 +188,11 @@ lib/
   common.zsh          # helpers (+ JSON mode)
 commands/
   health.zsh
+  analyze.zsh         # one-shot advice (inspect)
   memory.zsh          # detailed RAM / process families
   watch.zsh           # live memory refresh (top-style)
+  disk.zsh            # Data volume + Library / bloat (inspect)
+  trash.zsh           # Trash status / empty
   purge.zsh
   caches.zsh
   docker.zsh
@@ -194,6 +207,7 @@ Each command group lives in its own file under `commands/` and is sourced by the
 
 - Destructive steps ask for confirmation unless you pass `-y`.
 - `health` Disk shows the APFS **Data** volume (what fills the Mac), not a raw `df` dump. `/` is sealed OS space — do not add Used from `/` and Data.
+- `analyze` is inspect-only advice; `disk` / `disk bloat` never delete; `trash empty` asks for confirm (or `-y`).
 - Cache cleans for Spotify, Chrome, Cursor, and VS Code refuse to run while that app is open.
 - `caches code` / `caches cursor` never delete settings.json; `*-deep` only clears workspaceStorage + History.
 - `caches list` “all-caches” is a size summary only — not a delete target.
