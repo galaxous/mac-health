@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   release:
-    uses: galaxous/github-workflows/.github/workflows/reusable-semver-release.yml@v1
+    uses: galaxous/github-workflows/.github/workflows/reusable-semver-release.yml@v1.1.0
     secrets: inherit
     with:
       version_file: "VERSION"

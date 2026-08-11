@@ -32,7 +32,7 @@ permissions:
 
 jobs:
   release:
-    uses: galaxous/github-workflows/.github/workflows/reusable-manual-release.yml@v1
+    uses: galaxous/github-workflows/.github/workflows/reusable-manual-release.yml@v1.1.0
     secrets: inherit
     with:
       initial_tag: ${{ inputs.initial_tag }}
