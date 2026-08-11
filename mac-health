@@ -13,6 +13,7 @@
 #   login           LaunchAgents / login items
 #   maintenance     Monthly guided route
 #   paths           Print central path variables
+#   uninstall       Remove install (symlink, prefix, PATH block)
 #   help            This help
 
 emulate -L zsh
@@ -67,6 +68,7 @@ Commands:
   maintenance <action>   Monthly route (monthly|report)
   paths                  Print central MH_* paths
   version                Print version and install root
+  uninstall              Remove install (symlink, prefix, PATH block)
   help                   Show this help
 
 Examples:
@@ -77,7 +79,29 @@ Examples:
   mac-health docker status
   mac-health docker prune
   mac-health maintenance monthly
+  mac-health uninstall
 EOF
+}
+
+mh_cmd_uninstall() {
+  local script="${MH_ROOT}/uninstall.sh"
+  if [[ ! -f "${script}" ]]; then
+    mh_err "uninstall.sh not found at ${script}"
+    mh_err "Or run: curl -fsSL https://raw.githubusercontent.com/galaxous/mac-health/main/uninstall.sh | bash"
+    return 1
+  fi
+
+  # Copy out of the install tree before deleting PREFIX (self-delete safe).
+  local tmp
+  tmp="$(mktemp "${TMPDIR:-/tmp}/mac-health-uninstall.XXXXXX")"
+  cp "${script}" "${tmp}"
+  chmod +x "${tmp}"
+  # shellcheck disable=SC2064
+  trap "rm -f '${tmp}'" EXIT
+
+  local prefix="${PREFIX:-${HOME}/.mac-health}"
+  mh_log "Running uninstall (PREFIX=${prefix})"
+  PREFIX="${prefix}" FORCE="${FORCE:-0}" bash "${tmp}"
 }
 
 mh_cmd_version() {
@@ -130,6 +154,7 @@ case "$cmd" in
   maintenance|maintain) mh_cmd_maintenance "$@" ;;
   paths) mh_cmd_paths "$@" ;;
   version|--version|-V) mh_cmd_version "$@" ;;
+  uninstall|remove) mh_cmd_uninstall "$@" ;;
   *)
     mh_err "Unknown command: $cmd"
     mh_usage

@@ -30,9 +30,42 @@ curl -fsSL https://raw.githubusercontent.com/galaxous/mac-health/main/install.sh
 ### From a local clone
 
 ```bash
+make install
+make uninstall
+```
+
+`make help` lists targets. Equivalent scripts remain available:
+
+```bash
 ./install.sh --local
 # or
 ./install.zsh
+```
+
+## Uninstall
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/galaxous/mac-health/main/uninstall.sh | bash
+```
+
+Removes `~/bin/mac-health`, `~/.mac-health`, and the `# mac-health PATH` block from `~/.zshrc` if present. Safe to re-run.
+
+From a clone (preferred) or an installed copy:
+
+```bash
+make uninstall
+# or
+./uninstall.sh
+# or
+./uninstall.zsh
+# or
+mac-health uninstall   # also: mac-health remove
+```
+
+Custom prefix (same env as install):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/galaxous/mac-health/main/uninstall.sh | PREFIX=~/.mac-health bash
 ```
 
 ## Why
@@ -55,6 +88,7 @@ mac-health login list          # LaunchAgents / login items
 mac-health maintenance monthly # guided monthly route
 mac-health paths               # print central MH_* paths
 mac-health version             # version + install root
+mac-health uninstall           # remove install + PATH block
 ```
 
 Global flag:
@@ -66,8 +100,11 @@ mac-health -y caches npm       # skip confirmation prompts
 ## Layout
 
 ```
+Makefile              # local clone: make install / uninstall / help
 install.sh            # remote/local system installer
 install.zsh           # thin wrapper → install.sh --local
+uninstall.sh          # remote/local uninstaller
+uninstall.zsh         # thin wrapper → uninstall.sh
 mac-health            # CLI entry
 VERSION               # semver / alpha label
 lib/
@@ -91,6 +128,7 @@ Each command group lives in its own file under `commands/` and is sourced by the
 - `docker prune` removes unused images **and** volumes — back up important volumes first.
 - `purge` only reclaims inactive pages; it is not a long-term fix.
 - Re-running the installer replaces `~/.mac-health` and refreshes the `~/bin` symlink.
+- Uninstall is idempotent; it only removes the `# mac-health PATH` block install wrote (not other `PATH` exports).
 
 ## Requirements
 

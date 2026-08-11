@@ -81,6 +81,12 @@ install_from_dir() {
   if [[ -f "${PREFIX}/install.zsh" ]]; then
     chmod +x "${PREFIX}/install.zsh"
   fi
+  if [[ -f "${PREFIX}/uninstall.sh" ]]; then
+    chmod +x "${PREFIX}/uninstall.sh"
+  fi
+  if [[ -f "${PREFIX}/uninstall.zsh" ]]; then
+    chmod +x "${PREFIX}/uninstall.zsh"
+  fi
 
   rm -f "${LINK}"
   ln -s "${PREFIX}/mac-health" "${LINK}"
