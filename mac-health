@@ -66,6 +66,7 @@ Commands:
   login <action>         LaunchAgents / login items (list|checkpoint)
   maintenance <action>   Monthly route (monthly|report)
   paths                  Print central MH_* paths
+  version                Print version and install root
   help                   Show this help
 
 Examples:
@@ -77,6 +78,16 @@ Examples:
   mac-health docker prune
   mac-health maintenance monthly
 EOF
+}
+
+mh_cmd_version() {
+  local ver="unknown"
+  if [[ -f "${MH_ROOT}/VERSION" ]]; then
+    ver="$(<"${MH_ROOT}/VERSION")"
+    ver="${ver%%$'\n'*}"
+  fi
+  print "mac-health ${ver}"
+  print "root: ${MH_ROOT}"
 }
 
 mh_cmd_paths() {
@@ -118,6 +129,7 @@ case "$cmd" in
   login|agents) mh_cmd_login "$@" ;;
   maintenance|maintain) mh_cmd_maintenance "$@" ;;
   paths) mh_cmd_paths "$@" ;;
+  version|--version|-V) mh_cmd_version "$@" ;;
   *)
     mh_err "Unknown command: $cmd"
     mh_usage

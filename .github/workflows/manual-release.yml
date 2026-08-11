@@ -39,3 +39,4 @@ jobs:
       prerelease: ${{ inputs.prerelease }}
       force_release: ${{ inputs.force_release }}
       tag: ${{ inputs.tag }}
+      version_file: "VERSION"
