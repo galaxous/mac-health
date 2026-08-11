@@ -1,0 +1,41 @@
+# Copy into your repo as `.github/workflows/manual-release.yml`
+# Pin to a tag of galaxous/github-workflows (create v1 first).
+
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      initial_tag:
+        type: string
+        description: The initial tag name
+        default: v0.0.0
+      prerelease:
+        type: choice
+        description: Prerelease mode
+        options:
+          - "false"
+          - "alpha"
+          - "beta"
+          - "rc"
+      force_release:
+        type: boolean
+        description: Force release
+        default: false
+      tag:
+        type: string
+        description: The tag name
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    uses: galaxous/github-workflows/.github/workflows/reusable-manual-release.yml@v1
+    secrets: inherit
+    with:
+      initial_tag: ${{ inputs.initial_tag }}
+      prerelease: ${{ inputs.prerelease }}
+      force_release: ${{ inputs.force_release }}
+      tag: ${{ inputs.tag }}

@@ -1,0 +1,19 @@
+# Copy into your repo as `.github/workflows/update-changelog.yml`
+# Must stay triggered by `release: types: [released]` so the reusable
+# workflow can read github.event.release.name / .body.
+
+name: Update Changelog
+
+on:
+  release:
+    types: [released]
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    uses: galaxous/github-workflows/.github/workflows/reusable-update-changelog.yml@v1
+    secrets: inherit
+    with:
+      branch: main

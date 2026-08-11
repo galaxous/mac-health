@@ -1,0 +1,17 @@
+# Copy into your repo as `.github/workflows/semver-release.yml`
+# Keep project-specific tests/builds in separate jobs; call this after they succeed.
+
+name: Semver Release
+
+on:
+  push:
+    branches:
+      - "release/**"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    uses: galaxous/github-workflows/.github/workflows/reusable-semver-release.yml@v1
+    secrets: inherit
