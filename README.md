@@ -77,9 +77,14 @@ On a 16 GB Mac, Docker, Chrome, IDEs, and app caches often pile up. `mac-health`
 ```bash
 mac-health health              # RAM, disk, heavy paths
 mac-health purge               # sudo purge (temporary relief)
-mac-health caches list         # show cache sizes
-mac-health caches spotify      # clean one cache target
-mac-health caches all          # safe batch (skips running apps)
+mac-health caches list         # sizes + IDE breakdown
+mac-health caches code         # VS Code safe caches (quit Code)
+mac-health caches code-deep    # + workspaceStorage + History
+mac-health caches cursor       # Cursor Cache + CachedData
+mac-health caches cursor-deep  # + Cursor workspaceStorage + History
+mac-health caches chrome-sw    # Chrome Service Worker
+mac-health caches spotify
+mac-health caches all          # safe batch only (no *-deep)
 mac-health docker status       # Docker disk usage
 mac-health docker soft         # light prune
 mac-health docker prune        # full prune (images + volumes)
@@ -151,7 +156,9 @@ Each command group lives in its own file under `commands/` and is sourced by the
 ## Notes
 
 - Destructive steps ask for confirmation unless you pass `-y`.
-- Cache cleans for Spotify, Chrome, and Cursor refuse to run while that app is open.
+- Cache cleans for Spotify, Chrome, Cursor, and VS Code refuse to run while that app is open.
+- `caches code` / `caches cursor` never delete settings.json; `*-deep` only clears workspaceStorage + History.
+- `caches list` “all-caches” is a size summary only — not a delete target.
 - `docker prune` removes unused images **and** volumes — back up important volumes first.
 - `purge` only reclaims inactive pages; it is not a long-term fix.
 - Re-running the installer replaces `~/.mac-health` and refreshes the `~/bin` symlink.
