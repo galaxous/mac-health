@@ -77,7 +77,7 @@ Commands:
   memory [--top N]       Detailed RAM: pressure, top RSS, app families
   purge                  Instant memory purge (sudo)
   caches <target>        Cache cleanup (all|list|spotify|chrome|npm|…)
-  docker <action>        Docker tools (status|soft|prune|quit)
+  docker <action>        Docker tools (status|volumes|prune images|quit)
   login <action>         LaunchAgents / login items (list|checkpoint)
   maintenance <action>   Monthly route (monthly|report)
   projects <root> <tgt>  Scan/purge vendor + node_modules (dry-run default)

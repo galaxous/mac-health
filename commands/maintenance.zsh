@@ -5,7 +5,7 @@ mh_cmd_maintenance_usage() {
 Usage: mac-health maintenance <action>
 
 Actions:
-  monthly   Guided monthly route: list → brew/npm/composer → docker soft → caches list
+  monthly   Guided monthly route: list → brew/npm/composer → docker prune images → caches
   report    Size report only (no deletes)
 EOF
 }
@@ -73,9 +73,9 @@ mh_cmd_maintenance_monthly() {
     mh_cmd_caches_composer
   fi
 
-  mh_log "Step 4/5 — Docker soft prune"
-  if mh_confirm "Run docker soft prune? (daemon must be running)"; then
-    mh_cmd_docker_soft
+  mh_log "Step 4/5 — Docker prune images"
+  if mh_confirm "REMOVE unused Docker images with: docker prune images? (volumes kept)"; then
+    mh_cmd_docker_images
   fi
 
   mh_log "Step 5/5 — App caches (spotify/chrome/cursor)"

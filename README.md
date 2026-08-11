@@ -88,9 +88,10 @@ mac-health caches cursor-deep  # + Cursor workspaceStorage + History
 mac-health caches chrome-sw    # Chrome Service Worker
 mac-health caches spotify
 mac-health caches all          # safe batch only (no *-deep)
-mac-health docker status       # Docker disk usage
-mac-health docker soft         # light prune
-mac-health docker prune        # full prune (images + volumes)
+mac-health docker status       # df + volumes (inspect)
+mac-health docker volumes      # volume list (inspect only)
+mac-health docker prune images --dry-run  # preview unused images
+mac-health docker prune images # REMOVE unused images only
 mac-health docker quit         # quit Docker Desktop
 mac-health login list          # LaunchAgents / login items
 mac-health maintenance monthly # guided monthly route
@@ -111,8 +112,20 @@ mac-health --json caches list
 mac-health --json projects ~/Desktop/Projects.nosync npm
 mac-health -y --json caches npm
 mac-health --json docker status
+mac-health --json docker volumes
 mac-health --json maintenance report
 ```
+
+### Docker (inspect vs prune images)
+
+| Action | Effect | Deletes? |
+|--------|--------|----------|
+| `status` / `volumes` | inventory | no |
+| `prune images --dry-run` | preview unused images | no |
+| `prune` / `prune images` | `docker image prune -a` | images only |
+| `quit` | quit Desktop | no |
+
+mac-health never deletes containers, networks, volumes, or build cache. Old targets (`soft`, `routine`, `volumes`, `all`, …) are refused.
 
 ### Projects deps (`vendor` / `node_modules`)
 
@@ -180,7 +193,7 @@ Each command group lives in its own file under `commands/` and is sourced by the
 - Cache cleans for Spotify, Chrome, Cursor, and VS Code refuse to run while that app is open.
 - `caches code` / `caches cursor` never delete settings.json; `*-deep` only clears workspaceStorage + History.
 - `caches list` “all-caches” is a size summary only — not a delete target.
-- `docker prune` removes unused images **and** volumes — back up important volumes first.
+- `docker status` / `docker volumes` never delete. The only removal command is `docker prune images` (unused images; `--dry-run` supported). Containers/networks/volumes/build cache are never deleted by mac-health.
 - `purge` only reclaims inactive pages; it is not a long-term fix.
 - Re-running the installer replaces `~/.mac-health` and refreshes the `~/bin` symlink.
 - Uninstall is idempotent; it only removes the `# mac-health PATH` block install wrote (not other `PATH` exports).

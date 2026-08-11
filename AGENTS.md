@@ -37,8 +37,10 @@ When `MH_JSON=1` (via `--json`):
 | `caches list` | caches / vscode / cursor size inventories |
 | `caches <target>` | mutator result `{action, ok}` (requires `-y` when confirm would prompt) |
 | `projects` | dry-run inventory or apply summary |
-| `docker status` | path sizes + daemon flags + optional `system_df` text |
-| `docker soft\|prune\|quit` | `{action, ok, …}` |
+| `docker status` | path sizes, system df, volume inventory |
+| `docker volumes` | volume list only; never deletes |
+| `docker prune` / `prune images` | `{action:"prune", target:"images", dry_run}`; only unused images |
+| `docker quit` | `{action, ok, …}` |
 | `login list\|checkpoint` | agents / login items |
 | `maintenance report` | nested `caches` + `docker` documents |
 | `purge` | `{ok, …}` (requires `-y`) |
@@ -54,6 +56,9 @@ mac-health --json caches list
 mac-health --json projects ~/Desktop/Projects.nosync npm
 mac-health -y --json caches npm
 mac-health --json docker status
+mac-health --json docker volumes
+mac-health --json docker prune images --dry-run
+mac-health -y --json docker prune images
 mac-health --json login list
 mac-health --json maintenance report
 ```
@@ -81,6 +86,7 @@ Sizes that are inventory-oriented use **bytes** (integer) plus optional **human*
 - `projects` only removes leaf `vendor` / `node_modules` dirs that pass the sibling-manifest gate.
 - Refuse scanning `/` or `$HOME` as a projects root.
 - App-gated cleanups call `mh_require_app_closed` first.
+- Docker: inspect (`status`, `volumes`) never delete. The only mutator is `docker prune images` (`--dry-run` supported). Containers, networks, volumes, and build cache are never removed by mac-health. Former targets (`soft`, `routine`, `all`, …) are refused.
 
 ## Code layout
 
