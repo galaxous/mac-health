@@ -32,7 +32,7 @@ When `MH_JSON=1` (via `--json`):
 |---------|--------|
 | `version` | `{version, root}` |
 | `paths` | `{paths: {MH_*: …}}` |
-| `health` | hardware, os, memory, disk, heavy_paths, launch_agents |
+| `health` | hardware, os, memory, disk (`primary` = Data volume), heavy_paths, launch_agents |
 | `memory` | vm, processes, families, hints (`--top N` still applies) |
 | `caches list` | caches / vscode / cursor size inventories |
 | `caches <target>` | mutator result `{action, ok}` (requires `-y` when confirm would prompt) |

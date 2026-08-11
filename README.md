@@ -190,6 +190,7 @@ Each command group lives in its own file under `commands/` and is sourced by the
 ## Notes
 
 - Destructive steps ask for confirmation unless you pass `-y`.
+- `health` Disk shows the APFS **Data** volume (what fills the Mac), not a raw `df` dump. `/` is sealed OS space — do not add Used from `/` and Data.
 - Cache cleans for Spotify, Chrome, Cursor, and VS Code refuse to run while that app is open.
 - `caches code` / `caches cursor` never delete settings.json; `*-deep` only clears workspaceStorage + History.
 - `caches list` “all-caches” is a size summary only — not a delete target.
