@@ -1,0 +1,126 @@
+#!/usr/bin/env zsh
+# mac-health — MacBook memory/CPU hygiene toolkit
+#
+# Usage:
+#   mac-health <command> [args...]
+#   mac-health -y <command> ...     # auto-confirm prompts
+#
+# Commands:
+#   health          Memory / disk / heavy-path check
+#   purge           sudo purge (instant reclaim)
+#   caches          Cache cleanup group (see: caches help)
+#   docker          Docker cleanup group (see: docker help)
+#   login           LaunchAgents / login items
+#   maintenance     Monthly guided route
+#   paths           Print central path variables
+#   help            This help
+
+emulate -L zsh
+setopt extended_glob null_glob
+
+# Ensure core + Homebrew tools resolve outside IDE sandboxes
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH}"
+
+typeset -g MH_ROOT="${0:A:h}"
+typeset -g MH_YES=0
+
+# Parse global flags before command
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -y|--yes)
+      MH_YES=1
+      shift
+      ;;
+    -h|--help)
+      set -- help
+      break
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+source "${MH_ROOT}/lib/paths.zsh"
+source "${MH_ROOT}/lib/common.zsh"
+
+typeset _cmd_file
+for _cmd_file in "${MH_ROOT}/commands"/*.zsh(N); do
+  source "${_cmd_file}"
+done
+unset _cmd_file
+
+mh_usage() {
+  cat <<EOF
+mac-health — MacBook hygiene toolkit
+Root: ${MH_ROOT}
+
+Usage:
+  mac-health [-y] <command> [args...]
+
+Commands:
+  health                 System check (RAM, disk, heavy paths)
+  purge                  Instant memory purge (sudo)
+  caches <target>        Cache cleanup (all|list|spotify|chrome|npm|…)
+  docker <action>        Docker tools (status|soft|prune|quit)
+  login <action>         LaunchAgents / login items (list|checkpoint)
+  maintenance <action>   Monthly route (monthly|report)
+  paths                  Print central MH_* paths
+  help                   Show this help
+
+Examples:
+  mac-health health
+  mac-health caches list
+  mac-health caches spotify
+  mac-health -y caches npm
+  mac-health docker status
+  mac-health docker prune
+  mac-health maintenance monthly
+EOF
+}
+
+mh_cmd_paths() {
+  mh_section "Central paths (MH_*)"
+  print "  MH_ROOT                      ${MH_ROOT}"
+  print "  MH_HOME                      ${MH_HOME}"
+  print "  MH_CACHES                    ${MH_CACHES}"
+  print "  MH_CACHE_SPOTIFY             ${MH_CACHE_SPOTIFY}"
+  print "  MH_CACHE_CHROME              ${MH_CACHE_CHROME}"
+  print "  MH_CACHE_HOMEBREW            ${MH_CACHE_HOMEBREW}"
+  print "  MH_CACHE_COMPOSER            ${MH_CACHE_COMPOSER}"
+  print "  MH_NPM_CACHE                 ${MH_NPM_CACHE}"
+  print "  MH_CURSOR_SUPPORT            ${MH_CURSOR_SUPPORT}"
+  print "  MH_CURSOR_CACHE              ${MH_CURSOR_CACHE}"
+  print "  MH_CURSOR_CACHED_DATA        ${MH_CURSOR_CACHED_DATA}"
+  print "  MH_CODE_SUPPORT              ${MH_CODE_SUPPORT}"
+  print "  MH_CHROME_SW                 ${MH_CHROME_SW}"
+  print "  MH_DOCKER_CONTAINERS         ${MH_DOCKER_CONTAINERS}"
+  print "  MH_DOCKER_HOME               ${MH_DOCKER_HOME}"
+  print "  MH_LAUNCH_AGENTS             ${MH_LAUNCH_AGENTS}"
+  print "  MH_LOGS                      ${MH_LOGS}"
+  print "  MH_PROJECTS                  ${MH_PROJECTS}"
+  mh_section "App process map"
+  local key
+  for key in ${(k)MH_APP_PROCESS}; do
+    printf "  %-12s → %s\n" "$key" "${MH_APP_PROCESS[$key]}"
+  done
+}
+
+typeset cmd="${1:-help}"
+[[ $# -gt 0 ]] && shift
+
+case "$cmd" in
+  help) mh_usage ;;
+  health|check|checkhealth) mh_cmd_health "$@" ;;
+  purge) mh_cmd_purge "$@" ;;
+  caches|cache) mh_cmd_caches "$@" ;;
+  docker) mh_cmd_docker "$@" ;;
+  login|agents) mh_cmd_login "$@" ;;
+  maintenance|maintain) mh_cmd_maintenance "$@" ;;
+  paths) mh_cmd_paths "$@" ;;
+  *)
+    mh_err "Unknown command: $cmd"
+    mh_usage
+    exit 1
+    ;;
+esac
