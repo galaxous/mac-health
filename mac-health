@@ -12,6 +12,7 @@
 #   docker          Docker cleanup group (see: docker help)
 #   login           LaunchAgents / login items
 #   maintenance     Monthly guided route
+#   projects        Scan/purge vendor + node_modules under a required root
 #   paths           Print central path variables
 #   uninstall       Remove install (symlink, prefix, PATH block)
 #   help            This help
@@ -66,6 +67,7 @@ Commands:
   docker <action>        Docker tools (status|soft|prune|quit)
   login <action>         LaunchAgents / login items (list|checkpoint)
   maintenance <action>   Monthly route (monthly|report)
+  projects <root> <tgt>  Scan/purge vendor + node_modules (dry-run default)
   paths                  Print central MH_* paths
   version                Print version and install root
   uninstall              Remove install (symlink, prefix, PATH block)
@@ -79,6 +81,9 @@ Examples:
   mac-health docker status
   mac-health docker prune
   mac-health maintenance monthly
+  mac-health projects ~/Desktop/Projects.nosync composer
+  mac-health projects ~/Desktop/Projects.nosync all --exclude 'b2press-cms'
+  mac-health -y projects ~/Desktop/Projects.nosync npm --apply
   mac-health uninstall
 EOF
 }
@@ -152,6 +157,7 @@ case "$cmd" in
   docker) mh_cmd_docker "$@" ;;
   login|agents) mh_cmd_login "$@" ;;
   maintenance|maintain) mh_cmd_maintenance "$@" ;;
+  projects|deps) mh_cmd_projects "$@" ;;
   paths) mh_cmd_paths "$@" ;;
   version|--version|-V) mh_cmd_version "$@" ;;
   uninstall|remove) mh_cmd_uninstall "$@" ;;

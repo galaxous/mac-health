@@ -86,10 +86,36 @@ mac-health docker prune        # full prune (images + volumes)
 mac-health docker quit         # quit Docker Desktop
 mac-health login list          # LaunchAgents / login items
 mac-health maintenance monthly # guided monthly route
+mac-health projects <root> …   # scan/purge vendor + node_modules (see below)
 mac-health paths               # print central MH_* paths
 mac-health version             # version + install root
 mac-health uninstall           # remove install + PATH block
 ```
+
+### Projects deps (`vendor` / `node_modules`)
+
+`<root>` is **required** (no default). Default mode is dry-run. A `vendor` / `node_modules` match is kept only when its **parent** has a matching package-manager manifest (`composer.json`/`composer.lock`/`composer-dev.*` for Composer; `package.json`/`package-lock.json` for npm).
+
+```bash
+mac-health projects ~/Desktop/Projects.nosync composer
+mac-health projects ~/Desktop/Projects.nosync npm
+mac-health projects ~/Desktop/Projects.nosync all
+mac-health projects ~/Desktop/Projects.nosync all --maxDepth 3
+mac-health projects ~/Desktop/Projects.nosync all --exclude 'b2press-cms|modularous'
+mac-health projects  ~/Desktop/Projects.nosync npm --exclude '^press-(app|cms)(/|$)'
+mac-health projects ~/Desktop/Projects.nosync npm --include 'heydaytr|jakomeet' --apply
+mac-health -y projects ~/Desktop/Projects.nosync all --apply
+```
+
+| Arg / flag                 | Meaning                                                                                                    |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `<root>`                   | Directory to scan (e.g. `~/Desktop/Projects.nosync`)                                                       |
+| `composer` / `npm` / `all` | `vendor` / `node_modules` (manifest-gated), or both                                                        |
+| `--maxDepth <n>`           | Nesting under root (default **1** = `root/<project>/vendor\|node_modules` only; raise for nested packages) |
+| `--apply`                  | Delete matches (asks to confirm)                                                                           |
+| `--no-interaction`         | Same as `-y`: no confirm on `--apply`                                                                      |
+| `--exclude <regex>`        | Skip relative paths matching (repeatable)                                                                  |
+| `--include <regex>`        | If set, keep only matching relative paths                                                                  |
 
 Global flag:
 
@@ -117,6 +143,7 @@ commands/
   docker.zsh
   login.zsh
   maintenance.zsh
+  projects.zsh        # vendor / node_modules scan + purge
 ```
 
 Each command group lives in its own file under `commands/` and is sourced by the main `mac-health` script.
@@ -129,6 +156,7 @@ Each command group lives in its own file under `commands/` and is sourced by the
 - `purge` only reclaims inactive pages; it is not a long-term fix.
 - Re-running the installer replaces `~/.mac-health` and refreshes the `~/bin` symlink.
 - Uninstall is idempotent; it only removes the `# mac-health PATH` block install wrote (not other `PATH` exports).
+- `projects` never defaults a scan root — pass it explicitly. It refuses `/` and `$HOME`. Dry-run unless `--apply`. Default `--maxDepth 1` only hits `root/<project>/vendor|node_modules`.
 
 ## Requirements
 
