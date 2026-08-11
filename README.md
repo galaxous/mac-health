@@ -79,6 +79,8 @@ mac-health                     # default: health check (RAM, disk, heavy paths)
 mac-health health              # same
 mac-health memory              # detailed RAM: pressure, top RSS, app families
 mac-health memory --top 25
+mac-health watch               # live memory (in-place redraw, Ctrl+C)
+mac-health watch -n 1 --top 25
 mac-health purge               # sudo purge (temporary relief)
 mac-health caches list         # sizes + IDE breakdown
 mac-health caches code         # VS Code safe caches (quit Code)
@@ -177,6 +179,7 @@ lib/
 commands/
   health.zsh
   memory.zsh          # detailed RAM / process families
+  watch.zsh           # live memory refresh (top-style)
   purge.zsh
   caches.zsh
   docker.zsh

@@ -34,6 +34,7 @@ When `MH_JSON=1` (via `--json`):
 | `paths` | `{paths: {MH_*: …}}` |
 | `health` | hardware, os, memory, disk (`primary` = Data volume), heavy_paths, launch_agents |
 | `memory` | vm, processes, families, hints (`--top N` still applies) |
+| `watch` | **No JSON** — TTY in-place memory refresh (`--interval` / `--top`; alt screen, no full clear flash) |
 | `caches list` | caches / vscode / cursor size inventories |
 | `caches <target>` | mutator result `{action, ok}` (requires `-y` when confirm would prompt) |
 | `projects` | dry-run inventory or apply summary |
@@ -97,7 +98,7 @@ Sizes that are inventory-oriented use **bytes** (integer) plus optional **human*
 | `lib/common.zsh` | logging, confirm, JSON helpers (`mh_json_mode`, `mh_json_doc`) |
 | `commands/*.zsh` | One file per command group |
 
-When adding a new inspect command: support `--json` with a stable `"command"` key, keep human output behind `mh_json_mode` checks, and document it in this file + `README.md`.
+When adding a new inspect command: support `--json` with a stable `"command"` key, keep human output behind `mh_json_mode` checks, and document it in this file + `README.md`. Exception: `watch` is human-only (live TTY refresh); refuse `--json`.
 
 ### zsh `print` pitfall
 

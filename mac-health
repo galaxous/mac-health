@@ -9,6 +9,7 @@
 # Commands:
 #   health          Memory / disk / heavy-path check (default)
 #   memory          Detailed RAM: pressure, top RSS, app families
+#   watch           Live refresh (memory) like top/htop
 #   purge           sudo purge (instant reclaim)
 #   caches          Cache cleanup group (see: caches help)
 #   docker          Docker cleanup group (see: docker help)
@@ -75,6 +76,7 @@ Global flags:
 Commands:
   health                 System check (RAM, disk, heavy paths) [default]
   memory [--top N]       Detailed RAM: pressure, top RSS, app families
+  watch [memory] [-n N]  Live refresh (Ctrl+C quit; human UI only)
   purge                  Instant memory purge (sudo)
   caches <target>        Cache cleanup (all|list|spotify|chrome|npm|…)
   docker <action>        Docker tools (status|volumes|prune images|quit)
@@ -90,6 +92,8 @@ Examples:
   mac-health
   mac-health --json memory
   mac-health memory --json --top 25
+  mac-health watch
+  mac-health watch memory -n 1 --top 25
   mac-health --json caches list
   mac-health --json projects ~/Desktop/Projects.nosync composer
   mac-health health
@@ -233,6 +237,7 @@ case "$cmd" in
   help) mh_usage ;;
   health|check|checkhealth) mh_cmd_health "$@" ;;
   memory|mem|ram) mh_cmd_memory "$@" ;;
+  watch) mh_cmd_watch "$@" ;;
   purge) mh_cmd_purge "$@" ;;
   caches|cache) mh_cmd_caches "$@" ;;
   docker) mh_cmd_docker "$@" ;;
