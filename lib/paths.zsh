@@ -46,6 +46,10 @@ typeset -g MH_CHROME_SW="${MH_APP_SUPPORT}/Google/Chrome/Default/Service Worker"
 
 # Package managers / Docker
 typeset -g MH_NPM_CACHE="${MH_HOME}/.npm"
+typeset -g MH_PNPM_HOME="${MH_HOME}/Library/pnpm"
+typeset -g MH_CACHE_PNPM="${MH_CACHES}/pnpm"
+typeset -g MH_CACHE_YARN="${MH_CACHES}/Yarn"
+typeset -g MH_BUN_CACHE="${MH_HOME}/.bun/install/cache"
 typeset -g MH_DOCKER_HOME="${MH_HOME}/.docker"
 typeset -g MH_DOCKER_CONTAINERS="${MH_LIBRARY}/Containers/com.docker.docker"
 
@@ -66,4 +70,5 @@ typeset -gA MH_APP_PROCESS=(
   [cursor]="Cursor"
   [code]="Code"
   [docker]="Docker"
+  [xcode]="Xcode"
 )

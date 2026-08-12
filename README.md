@@ -82,10 +82,17 @@ mac-health disk                # Data volume + ~/Library buckets
 mac-health disk bloat          # known fat paths + cleanup hints
 mac-health trash               # Trash size
 mac-health trash empty         # empty ~/.Trash (confirm / -y)
+mac-health xcode               # DerivedData / Archives / Simulator sizes
+mac-health xcode clean-derived # empty DerivedData (quit Xcode)
 mac-health memory              # detailed RAM: pressure, top RSS, app families
 mac-health memory --top 25
-mac-health watch               # live memory (in-place redraw, Ctrl+C)
+mac-health watch               # live memory + Data % (in-place, Ctrl+C)
 mac-health watch -n 1 --top 25
+mac-health caches npm
+mac-health caches pnpm
+mac-health caches yarn
+mac-health caches bun
+mac-health caches logs --older 14  # delete log files older than 14 days
 mac-health purge               # sudo purge (temporary relief)
 mac-health caches list         # sizes + IDE breakdown
 mac-health caches code         # VS Code safe caches (quit Code)
@@ -118,14 +125,17 @@ mac-health --json analyze
 mac-health --json disk status
 mac-health --json disk bloat
 mac-health --json trash status
+mac-health --json xcode status
 mac-health memory --json --top 25
 mac-health --json caches list
 mac-health --json projects ~/Desktop/Projects.nosync npm
 mac-health -y --json caches npm
+mac-health -y --json caches logs --older 30
 mac-health --json docker status
 mac-health --json docker volumes
 mac-health --json maintenance report
 mac-health -y --json trash empty
+mac-health -y --json xcode clean-derived
 ```
 
 ### Docker (inspect vs prune images)
@@ -139,31 +149,33 @@ mac-health -y --json trash empty
 
 mac-health never deletes containers, networks, volumes, or build cache. Old targets (`soft`, `routine`, `volumes`, `all`, …) are refused.
 
-### Projects deps (`vendor` / `node_modules`)
+### Projects deps (`vendor` / `node_modules` / artifacts)
 
-`<root>` is **required** (no default). Default mode is dry-run. A `vendor` / `node_modules` match is kept only when its **parent** has a matching package-manager manifest (`composer.json`/`composer.lock`/`composer-dev.*` for Composer; `package.json`/`package-lock.json` for npm).
+`<root>` is **required** (no default). Default mode is dry-run. Matches are kept only when the **parent** has a package-manager / tool manifest. `all` = composer + npm only; use `artifacts` separately for `.next` / `.turbo` / `dist` / `coverage`.
 
 ```bash
 mac-health projects ~/Desktop/Projects.nosync composer
 mac-health projects ~/Desktop/Projects.nosync npm
+mac-health projects ~/Desktop/Projects.nosync artifacts
 mac-health projects ~/Desktop/Projects.nosync all
 mac-health projects ~/Desktop/Projects.nosync all --maxDepth 3
 mac-health projects ~/Desktop/Projects.nosync all --exclude 'b2press-cms|modularous'
 mac-health projects  ~/Desktop/Projects.nosync npm --exclude '^press-(app|cms)(/|$)'
 mac-health projects ~/Desktop/Projects.nosync npm --include 'heydaytr|jakomeet' --apply
+mac-health -y projects ~/Desktop/Projects.nosync artifacts --apply
 mac-health -y projects ~/Desktop/Projects.nosync all --apply
 ```
 
-| Arg / flag                 | Meaning                                                                                                    |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `<root>`                   | Directory to scan (e.g. `~/Desktop/Projects.nosync`)                                                       |
-| `composer` / `npm` / `all` | `vendor` / `node_modules` (manifest-gated), or both                                                        |
-| `--maxDepth <n>`           | Nesting under root (default **1** = `root/<project>/vendor\|node_modules` only; raise for nested packages) |
-| `--apply`                  | Delete matches (asks to confirm)                                                                           |
-| `--no-interaction`         | Same as `-y`: no confirm on `--apply`                                                                      |
-| `--exclude <regex>`        | Skip relative paths matching (repeatable)                                                                  |
-| `--include <regex>`        | If set, keep only matching relative paths                                                                  |
-| `--json`                   | Machine-readable JSON on stdout (see `AGENTS.md`)                                                          |
+| Arg / flag                          | Meaning                                                                                         |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `<root>`                            | Directory to scan (e.g. `~/Desktop/Projects.nosync`)                                            |
+| `composer` / `npm` / `artifacts` / `all` | `vendor` / `node_modules` / build outputs, or composer+npm                                      |
+| `--maxDepth <n>`                    | Nesting under root (default **1**; raise for nested packages)                                   |
+| `--apply`                           | Delete matches (asks to confirm)                                                                |
+| `--no-interaction`                  | Same as `-y`: no confirm on `--apply`                                                           |
+| `--exclude <regex>`                 | Skip relative paths matching (repeatable)                                                       |
+| `--include <regex>`                 | If set, keep only matching relative paths                                                       |
+| `--json`                            | Machine-readable JSON on stdout (see `AGENTS.md`)                                               |
 
 Global flags:
 
@@ -193,6 +205,7 @@ commands/
   watch.zsh           # live memory refresh (top-style)
   disk.zsh            # Data volume + Library / bloat (inspect)
   trash.zsh           # Trash status / empty
+  xcode.zsh           # DerivedData / Simulator inventory
   purge.zsh
   caches.zsh
   docker.zsh
@@ -208,10 +221,12 @@ Each command group lives in its own file under `commands/` and is sourced by the
 - Destructive steps ask for confirmation unless you pass `-y`.
 - `health` Disk shows the APFS **Data** volume (what fills the Mac), not a raw `df` dump. `/` is sealed OS space — do not add Used from `/` and Data.
 - `analyze` is inspect-only advice; `disk` / `disk bloat` never delete; `trash empty` asks for confirm (or `-y`).
+- `xcode` status is inspect-only; only `xcode clean-derived` deletes (Archives/Simulator never).
+- `caches logs --older N` deletes only files older than N days; bare `caches logs` still clears all log contents.
 - Cache cleans for Spotify, Chrome, Cursor, and VS Code refuse to run while that app is open.
 - `caches code` / `caches cursor` never delete settings.json; `*-deep` only clears workspaceStorage + History.
 - `caches list` “all-caches” is a size summary only — not a delete target.
-- `docker status` / `docker volumes` never delete. The only removal command is `docker prune images` (unused images; `--dry-run` supported). Containers/networks/volumes/build cache are never deleted by mac-health.
+- `docker status` / `docker volumes` never delete. Status reports exited containers / dangling images/networks as hints only. The only removal command is `docker prune images` (unused images; `--dry-run` supported). Containers/networks/volumes/build cache are never deleted by mac-health.
 - `purge` only reclaims inactive pages; it is not a long-term fix.
 - Re-running the installer replaces `~/.mac-health` and refreshes the `~/bin` symlink.
 - Uninstall is idempotent; it only removes the `# mac-health PATH` block install wrote (not other `PATH` exports).

@@ -11,6 +11,9 @@ Targets:
   chrome        ~/Library/Caches/Google/Chrome
   chrome-sw     Chrome Service Worker cache (quit Chrome first)
   npm           npm cache clean --force
+  pnpm          pnpm store prune (or ~/Library/pnpm + Caches/pnpm)
+  yarn          yarn cache clean (or ~/Library/Caches/Yarn)
+  bun           bun pm cache rm (or ~/.bun/install/cache)
   composer      composer clear-cache
   brew          brew cleanup -s
   cursor        Cursor Cache + CachedData (quit Cursor first)
@@ -19,7 +22,8 @@ Targets:
   code-deep     + Code User/workspaceStorage + History (settings kept)
   typescript    ~/Library/Caches/typescript
   node-gyp      ~/Library/Caches/node-gyp
-  logs          ~/Library/Logs (contents)
+  logs          ~/Library/Logs (all contents)
+  logs --older N  Only delete log files older than N days
 
 Notes:
   all-caches in list is a size summary only — never deleted as a whole.
@@ -34,6 +38,10 @@ mh_cmd_caches_list() {
     [chrome-sw]="$MH_CHROME_SW"
     [google-caches]="$MH_CACHE_GOOGLE"
     [npm]="$MH_NPM_CACHE"
+    [pnpm-home]="$MH_PNPM_HOME"
+    [pnpm-cache]="$MH_CACHE_PNPM"
+    [yarn]="$MH_CACHE_YARN"
+    [bun]="$MH_BUN_CACHE"
     [composer]="$MH_CACHE_COMPOSER"
     [homebrew]="$MH_CACHE_HOMEBREW"
     [typescript]="$MH_CACHE_TYPESCRIPT"
@@ -143,6 +151,62 @@ mh_cmd_caches_npm() {
   fi
 }
 
+mh_cmd_caches_pnpm() {
+  mh_section "pnpm store/cache"
+  if command -v pnpm >/dev/null 2>&1; then
+    local before
+    before="$(mh_human_size "$MH_PNPM_HOME")"
+    mh_log "pnpm home was $before — running: pnpm store prune"
+    if pnpm store prune; then
+      mh_ok "pnpm store prune done (pnpm home now $(mh_human_size "$MH_PNPM_HOME"))"
+    else
+      return 1
+    fi
+  else
+    mh_warn "pnpm not in PATH — clearing known dirs if present"
+    mh_safe_rm_contents "$MH_CACHE_PNPM" "Caches/pnpm"
+    # Do not wipe entire Library/pnpm (may hold global bins); only cache-like store if present
+    if [[ -d "$MH_PNPM_HOME/store" ]]; then
+      mh_safe_rm_contents "$MH_PNPM_HOME/store" "Library/pnpm/store"
+    fi
+  fi
+}
+
+mh_cmd_caches_yarn() {
+  mh_section "yarn cache"
+  if command -v yarn >/dev/null 2>&1; then
+    local before
+    before="$(mh_human_size "$MH_CACHE_YARN")"
+    mh_log "Yarn cache was $before"
+    if yarn cache clean; then
+      mh_ok "yarn cache clean done (now $(mh_human_size "$MH_CACHE_YARN"))"
+    else
+      return 1
+    fi
+  else
+    mh_warn "yarn not in PATH — clearing $MH_CACHE_YARN if present"
+    mh_safe_rm_contents "$MH_CACHE_YARN" "Caches/Yarn"
+  fi
+}
+
+mh_cmd_caches_bun() {
+  mh_section "bun install cache"
+  if command -v bun >/dev/null 2>&1; then
+    local before
+    before="$(mh_human_size "$MH_BUN_CACHE")"
+    mh_log "bun cache was $before"
+    if bun pm cache rm 2>/dev/null || bun pm cache clear 2>/dev/null; then
+      mh_ok "bun cache cleared (now $(mh_human_size "$MH_BUN_CACHE"))"
+    else
+      mh_warn "bun pm cache rm failed — falling back to directory clear"
+      mh_safe_rm_contents "$MH_BUN_CACHE" ".bun/install/cache"
+    fi
+  else
+    mh_warn "bun not in PATH — clearing $MH_BUN_CACHE if present"
+    mh_safe_rm_contents "$MH_BUN_CACHE" ".bun/install/cache"
+  fi
+}
+
 mh_cmd_caches_composer() {
   mh_section "Composer cache"
   if mh_run_if_cmd composer clear-cache; then
@@ -213,8 +277,63 @@ mh_cmd_caches_node_gyp() {
 }
 
 mh_cmd_caches_logs() {
+  local older=0
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --older)
+        if [[ -z "${2:-}" || ! "${2}" =~ ^[1-9][0-9]*$ ]]; then
+          mh_err "--older requires a positive integer (days)"
+          return 1
+        fi
+        older="$2"
+        shift 2
+        ;;
+      --older=*)
+        local o="${1#*=}"
+        if [[ ! "$o" =~ ^[1-9][0-9]*$ ]]; then
+          mh_err "--older requires a positive integer (days)"
+          return 1
+        fi
+        older="$o"
+        shift
+        ;;
+      *)
+        mh_err "Unknown logs flag: $1"
+        return 1
+        ;;
+    esac
+  done
+
   mh_section "User logs"
-  if ! mh_confirm "Delete contents of $MH_LOGS?"; then
+  if [[ ! -d "$MH_LOGS" ]]; then
+    mh_warn "Missing: $MH_LOGS"
+    return 0
+  fi
+
+  if (( older > 0 )); then
+    local -a old_files
+    old_files=("${(@f)$(find "$MH_LOGS" -type f -mtime "+${older}" 2>/dev/null)}")
+    local count=${#old_files}
+    mh_log "Found ${count} file(s) older than ${older} day(s) under $MH_LOGS"
+    if (( count == 0 )); then
+      mh_ok "Nothing to delete"
+      return 0
+    fi
+    if ! mh_confirm "Delete ${count} log file(s) older than ${older} days?"; then
+      mh_warn "Cancelled"
+      return 1
+    fi
+    local f
+    for f in "${old_files[@]}"; do
+      rm -f "$f" 2>/dev/null
+    done
+    # prune empty dirs left behind (best-effort)
+    find "$MH_LOGS" -type d -empty -delete 2>/dev/null || true
+    mh_ok "Removed ${count} old log file(s) (logs dir now $(mh_human_size "$MH_LOGS"))"
+    return 0
+  fi
+
+  if ! mh_confirm "Delete ALL contents of $MH_LOGS?"; then
     mh_warn "Cancelled"
     return 1
   fi
@@ -224,7 +343,7 @@ mh_cmd_caches_logs() {
 mh_cmd_caches_all() {
   mh_section "All safe caches"
   mh_warn "Will skip targets whose apps are still running. Does not run *-deep."
-  if ! mh_confirm "Clean spotify/chrome/chrome-sw/npm/composer/brew/cursor/code/typescript/node-gyp?"; then
+  if ! mh_confirm "Clean spotify/chrome/chrome-sw/npm/pnpm/yarn/bun/composer/brew/cursor/code/typescript/node-gyp?"; then
     mh_warn "Cancelled"
     return 1
   fi
@@ -234,6 +353,9 @@ mh_cmd_caches_all() {
   mh_cmd_caches_chrome || failed=1
   mh_cmd_caches_chrome_sw || failed=1
   mh_cmd_caches_npm || failed=1
+  mh_cmd_caches_pnpm || failed=1
+  mh_cmd_caches_yarn || failed=1
+  mh_cmd_caches_bun || failed=1
   mh_cmd_caches_composer || failed=1
   mh_cmd_caches_brew || failed=1
   mh_cmd_caches_cursor || failed=1
@@ -251,6 +373,7 @@ mh_cmd_caches_all() {
 mh_cmd_caches() {
   local target="${1:-}"
   local rc=0
+  [[ $# -gt 0 ]] && shift
   case "$target" in
     ""|-h|--help|help) mh_cmd_caches_usage ;;
     list) mh_cmd_caches_list ;;
@@ -259,6 +382,9 @@ mh_cmd_caches() {
     chrome) mh_cmd_caches_chrome; rc=$? ;;
     chrome-sw|chrome_sw) mh_cmd_caches_chrome_sw; rc=$? ;;
     npm) mh_cmd_caches_npm; rc=$? ;;
+    pnpm) mh_cmd_caches_pnpm; rc=$? ;;
+    yarn) mh_cmd_caches_yarn; rc=$? ;;
+    bun) mh_cmd_caches_bun; rc=$? ;;
     composer) mh_cmd_caches_composer; rc=$? ;;
     brew|homebrew) mh_cmd_caches_brew; rc=$? ;;
     cursor) mh_cmd_caches_cursor; rc=$? ;;
@@ -267,7 +393,7 @@ mh_cmd_caches() {
     code-deep|code_deep|vscode-deep) mh_cmd_caches_code_deep; rc=$? ;;
     typescript) mh_cmd_caches_typescript; rc=$? ;;
     node-gyp|node_gyp) mh_cmd_caches_node_gyp; rc=$? ;;
-    logs) mh_cmd_caches_logs; rc=$? ;;
+    logs) mh_cmd_caches_logs "$@"; rc=$? ;;
     *)
       mh_err "Unknown caches target: $target"
       mh_cmd_caches_usage

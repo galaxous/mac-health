@@ -135,6 +135,43 @@ except Exception:
 
 swap = run(["sysctl", "vm.swapusage"]).strip()
 
+# Fast Data-volume line (df -kP; ignore sealed /)
+disk_line = None
+df = run(["/bin/df", "-kP", "/", "/System/Volumes/Data"])
+df_rows = []
+for line in df.splitlines()[1:]:
+    cols = line.split()
+    if len(cols) < 6:
+        continue
+    try:
+        used_1k, avail_1k, blocks_1k = int(cols[2]), int(cols[3]), int(cols[1])
+        cap = cols[4]
+        mount = " ".join(cols[5:])
+    except ValueError:
+        continue
+    df_rows.append((mount, used_1k, avail_1k, blocks_1k, cap))
+data = next((r for r in df_rows if r[0] == "/System/Volumes/Data"), None)
+root = next((r for r in df_rows if r[0] == "/"), None)
+primary = data or root
+if primary:
+    mount, used_1k, avail_1k, blocks_1k, cap = primary
+    try:
+        pct = int(cap.rstrip("%"))
+    except ValueError:
+        pct = None
+    if pct is None:
+        dstat = "?"
+    elif pct >= 90:
+        dstat = "Critical"
+    elif pct >= 75:
+        dstat = "Warn"
+    else:
+        dstat = "OK"
+    disk_line = (
+        f"DISK Data {used_1k/1024/1024:.0f}G used  {avail_1k/1024/1024:.0f}G free  "
+        f"{cap} ({blocks_1k/1024/1024:.0f}G)  {dstat}"
+    )
+
 ps_out = run(["/bin/ps", "-axo", "pid=,rss=,%mem=,comm="])
 procs = []
 families = {}
@@ -174,6 +211,8 @@ lines.append(
 )
 if swap:
     lines.append(swap.replace("vm.swapusage: ", "swap: "))
+if disk_line:
+    lines.append(disk_line)
 lines.append("")
 lines.append(f"TOP RSS ({top_n})")
 lines.append(f"  {'RSS':>8}  {'%MEM':>5}  {'PID':>7}  COMMAND")

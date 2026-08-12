@@ -6,12 +6,13 @@ Usage: mac-health projects <root> <target> [flags]
 
 Arguments:
   <root>      Required directory to scan (e.g. ~/Desktop/Projects.nosync)
-  <target>    composer | npm | all
+  <target>    composer | npm | artifacts | all
 
 Targets:
   composer    vendor dirs whose parent has composer.json|lock (or composer-dev.*)
   npm         node_modules dirs whose parent has package.json|package-lock.json
-  all         both (same per-dir manifest checks)
+  artifacts   .next / .turbo / dist / coverage (parent must have package.json or tool config)
+  all         composer + npm only (artifacts are separate — safer default)
 
 Flags:
   (default)           Dry-run: list matches + sizes (no delete)
@@ -19,14 +20,16 @@ Flags:
   --no-interaction    Skip confirm on --apply (same as mac-health -y)
   --json              Machine-readable JSON on stdout
   --maxDepth <n>      Max project nesting under root (default: 1)
-                      1 = root/<project>/vendor|node_modules only
-                      2 = also root/<a>/<b>/vendor|node_modules, etc.
+                      1 = root/<project>/leaf only
+                      2 = also root/<a>/<b>/leaf, etc.
   --exclude <regex>   Drop relative paths matching regex (repeatable)
   --include <regex>   If any include is set, keep only matches (repeatable)
 
 Examples:
   mac-health projects ~/Desktop/Projects.nosync composer
   mac-health projects ~/Desktop/Projects.nosync npm --maxDepth 3
+  mac-health projects ~/Desktop/Projects.nosync artifacts
+  mac-health projects ~/Desktop/Projects.nosync artifacts --apply
   mac-health projects ~/Desktop/Projects.nosync all --exclude 'b2press-cms|modularous'
   mac-health projects ~/Desktop/Projects.nosync npm --include 'heydaytr' --apply
   mac-health -y projects ~/Desktop/Projects.nosync all --apply
@@ -63,20 +66,22 @@ mh_projects_resolve_root() {
 }
 
 mh_projects_dirname_ok() {
-  # $1 = basename, $2 = target (composer|npm|all)
+  # $1 = basename, $2 = target (composer|npm|artifacts|all)
   local base="$1"
   local target="$2"
   case "$target" in
     composer) [[ "$base" == "vendor" ]] ;;
     npm) [[ "$base" == "node_modules" ]] ;;
+    artifacts)
+      [[ "$base" == ".next" || "$base" == ".turbo" || "$base" == "dist" || "$base" == "coverage" ]]
+      ;;
     all) [[ "$base" == "vendor" || "$base" == "node_modules" ]] ;;
     *) return 1 ;;
   esac
 }
 
 mh_projects_has_manifest() {
-  # $1 = full path to vendor|node_modules, $2 = kind (composer|npm)
-  # Keep only if a package-manager manifest exists in the parent directory.
+  # $1 = full path to leaf dir, $2 = kind (composer|npm|artifacts)
   local dep="$1"
   local kind="$2"
   local parent="${dep:h}"
@@ -88,6 +93,13 @@ mh_projects_has_manifest() {
       ;;
     npm)
       [[ -f "$parent/package.json" || -f "$parent/package-lock.json" ]]
+      ;;
+    artifacts)
+      # Rebuildable frontend/tool outputs — require a JS project or turbo/next config
+      [[ -f "$parent/package.json" || -f "$parent/package-lock.json" \
+        || -f "$parent/pnpm-lock.yaml" || -f "$parent/yarn.lock" || -f "$parent/bun.lockb" \
+        || -f "$parent/turbo.json" || -f "$parent/next.config.js" || -f "$parent/next.config.mjs" \
+        || -f "$parent/next.config.ts" ]]
       ;;
     *)
       return 1
@@ -244,9 +256,9 @@ mh_cmd_projects() {
   fi
 
   case "$target" in
-    composer|npm|all) ;;
+    composer|npm|artifacts|all) ;;
     *)
-      mh_err "Unknown target: $target (use composer|npm|all)"
+      mh_err "Unknown target: $target (use composer|npm|artifacts|all)"
       mh_cmd_projects_usage
       return 1
       ;;
@@ -277,14 +289,21 @@ mh_cmd_projects() {
   found_raw=()
   matched=()
 
-  # maxDepth=1 → root/<project>/vendor (find -maxdepth 2)
+  # maxDepth=1 → root/<project>/leaf (find -maxdepth 2)
   # maxDepth=N → up to N path segments under root before the leaf dir name
   local find_maxdepth=$(( max_depth + 1 ))
 
   local line
   while IFS= read -r line; do
     [[ -n "$line" ]] && found_raw+=("$line")
-  done < <(/usr/bin/find "$root" -maxdepth "$find_maxdepth" \( -type d -name node_modules -o -type d -name vendor \) -prune -print 2>/dev/null)
+  done < <(/usr/bin/find "$root" -maxdepth "$find_maxdepth" \( \
+      -type d -name node_modules -o \
+      -type d -name vendor -o \
+      -type d -name .next -o \
+      -type d -name .turbo -o \
+      -type d -name dist -o \
+      -type d -name coverage \
+    \) -prune -print 2>/dev/null)
 
   local full base rel kind
   for full in "${found_raw[@]}"; do
@@ -293,6 +312,7 @@ mh_cmd_projects() {
     case "$base" in
       vendor) kind=composer ;;
       node_modules) kind=npm ;;
+      .next|.turbo|dist|coverage) kind=artifacts ;;
       *) continue ;;
     esac
     mh_projects_has_manifest "$full" "$kind" || continue

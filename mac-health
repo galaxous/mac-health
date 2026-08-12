@@ -13,6 +13,7 @@
 #   watch           Live refresh (memory) like top/htop
 #   disk            Data volume + Library / bloat inventory
 #   trash           Trash size / empty
+#   xcode           DerivedData / Simulator inventory
 #   purge           sudo purge (instant reclaim)
 #   caches          Cache cleanup group (see: caches help)
 #   docker          Docker cleanup group (see: docker help)
@@ -83,6 +84,7 @@ Commands:
   watch [memory] [-n N]  Live refresh (Ctrl+C quit; human UI only)
   disk [status|bloat]    Data volume + Library / known bloat (inspect)
   trash [status|empty]   Trash size or empty (~/.Trash)
+  xcode [status|…]       DerivedData / Simulator sizes; clean-derived
   purge                  Instant memory purge (sudo)
   caches <target>        Cache cleanup (all|list|spotify|chrome|npm|…)
   docker <action>        Docker tools (status|volumes|prune images|quit)
@@ -100,6 +102,7 @@ Examples:
   mac-health memory --json --top 25
   mac-health analyze
   mac-health disk bloat
+  mac-health xcode
   mac-health trash
   mac-health watch
   mac-health watch memory -n 1 --top 25
@@ -261,6 +264,7 @@ case "$cmd" in
   watch) mh_cmd_watch "$@" ;;
   disk) mh_cmd_disk "$@" ;;
   trash) mh_cmd_trash "$@" ;;
+  xcode) mh_cmd_xcode "$@" ;;
   purge) mh_cmd_purge "$@" ;;
   caches|cache) mh_cmd_caches "$@" ;;
   docker) mh_cmd_docker "$@" ;;

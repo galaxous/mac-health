@@ -40,10 +40,12 @@ When `MH_JSON=1` (via `--json`):
 | `disk bloat` | known fat paths + hints (inspect only) |
 | `trash status` | `{path, bytes, human}` |
 | `trash empty` | `{ok, …}` (requires `-y` when confirm would prompt) |
+| `xcode status` | DerivedData / Archives / Simulator sizes |
+| `xcode clean-derived` | `{ok, …}` (requires Xcode quit + `-y` when confirm would prompt) |
 | `caches list` | caches / vscode / cursor size inventories |
 | `caches <target>` | mutator result `{action, ok}` (requires `-y` when confirm would prompt) |
 | `projects` | dry-run inventory or apply summary |
-| `docker status` | path sizes, system df, volume inventory |
+| `docker status` | path sizes, system df, volume inventory, dangling/exited counts (inspect) |
 | `docker volumes` | volume list only; never deletes |
 | `docker prune` / `prune images` | `{action:"prune", target:"images", dry_run}`; only unused images |
 | `docker quit` | `{action, ok, …}` |
@@ -60,10 +62,12 @@ mac-health --json version
 mac-health --json analyze
 mac-health --json disk bloat
 mac-health --json trash status
+mac-health --json xcode status
 mac-health memory --json --top 25
 mac-health --json caches list
 mac-health --json projects ~/Desktop/Projects.nosync npm
 mac-health -y --json caches npm
+mac-health -y --json caches logs --older 30
 mac-health --json docker status
 mac-health --json docker volumes
 mac-health --json docker prune images --dry-run
@@ -71,6 +75,7 @@ mac-health -y --json docker prune images
 mac-health --json login list
 mac-health --json maintenance report
 mac-health -y --json trash empty
+mac-health -y --json xcode clean-derived
 ```
 
 ### Schema sketch
@@ -93,7 +98,7 @@ Sizes that are inventory-oriented use **bytes** (integer) plus optional **human*
 
 - Never delete `all-caches` as a whole; `caches list`’s `all-caches` row is size-only.
 - `*-deep` cache targets are not part of `caches all`.
-- `projects` only removes leaf `vendor` / `node_modules` dirs that pass the sibling-manifest gate.
+- `projects` only removes leaf `vendor` / `node_modules` / (with target `artifacts`) `.next` `.turbo` `dist` `coverage` that pass the sibling-manifest gate. `all` never includes artifacts.
 - Refuse scanning `/` or `$HOME` as a projects root.
 - App-gated cleanups call `mh_require_app_closed` first.
 - Docker: inspect (`status`, `volumes`) never delete. The only mutator is `docker prune images` (`--dry-run` supported). Containers, networks, volumes, and build cache are never removed by mac-health. Former targets (`soft`, `routine`, `all`, …) are refused.

@@ -265,6 +265,17 @@ mh_cmd_docker_status() {
     done < <(mh_docker_collect_volume_rows "${excludes[@]}")
   fi
 
+  # Inspect-only dangling resource counts (never deleted here)
+  local exited_n=0 dangling_img_n=0 dangling_net_n=0
+  if (( daemon )); then
+    exited_n="$(docker ps -aq -f status=exited 2>/dev/null | /usr/bin/wc -l | /usr/bin/tr -d ' ')"
+    dangling_img_n="$(docker images -f dangling=true -q 2>/dev/null | /usr/bin/wc -l | /usr/bin/tr -d ' ')"
+    dangling_net_n="$(docker network ls -f dangling=true -q 2>/dev/null | /usr/bin/wc -l | /usr/bin/tr -d ' ')"
+    exited_n="${exited_n:-0}"
+    dangling_img_n="${dangling_img_n:-0}"
+    dangling_net_n="${dangling_net_n:-0}"
+  fi
+
   if mh_json_mode; then
     {
       print -r -- "containers_b=${containers_b}"
@@ -274,6 +285,9 @@ mh_cmd_docker_status() {
       print -r -- "cli=${cli}"
       print -r -- "daemon=${daemon}"
       print -r -- "protect_re=${MH_DOCKER_PROTECT_RE}"
+      print -r -- "exited=${exited_n}"
+      print -r -- "dangling_images=${dangling_img_n}"
+      print -r -- "dangling_networks=${dangling_net_n}"
       print -r -- "===df==="
       print -r -- "$df_out"
       print -r -- "===volumes==="
@@ -316,6 +330,19 @@ for raw in sys.stdin:
 
 dangling = [v for v in vols if v["dangling"]]
 protected = [v for v in vols if v["protected"]]
+exited = int(meta.get("exited") or 0)
+dang_img = int(meta.get("dangling_images") or 0)
+dang_net = int(meta.get("dangling_networks") or 0)
+hints = [
+    "Only image removal is supported: mac-health docker prune images --dry-run",
+    "Containers / networks / volumes are never deleted by mac-health",
+]
+if exited:
+    hints.append("%d exited container(s) — not removed by mac-health (docker rm manually if desired)" % exited)
+if dang_img:
+    hints.append("%d dangling image layer(s) — usually cleared by: mac-health docker prune images" % dang_img)
+if dang_net:
+    hints.append("%d dangling network(s) — inspect only; mac-health never deletes networks" % dang_net)
 doc = {
     "command": "docker",
     "action": "status",
@@ -331,13 +358,14 @@ doc = {
     "volumes": vols,
     "summary": {
         "volume_count": len(vols),
+        "dangling_volume_count": len(dangling),
         "dangling_count": len(dangling),
         "protected_count": len(protected),
+        "exited_containers": exited,
+        "dangling_images": dang_img,
+        "dangling_networks": dang_net,
     },
-    "hints": [
-        "Only image removal is supported: mac-health docker prune images --dry-run",
-        "Containers / networks / volumes are never deleted by mac-health",
-    ],
+    "hints": hints,
 }
 print(json.dumps(doc, indent=2, ensure_ascii=False))
 '
@@ -359,6 +387,17 @@ print(json.dumps(doc, indent=2, ensure_ascii=False))
 
   mh_section "system df"
   print -r -- "$df_out"
+
+  mh_section "Dangling / leftover (inspect only — not deleted)"
+  printf "  %-22s %s\n" "exited containers" "$exited_n"
+  printf "  %-22s %s\n" "dangling images" "$dangling_img_n"
+  printf "  %-22s %s\n" "dangling networks" "$dangling_net_n"
+  if (( dangling_img_n > 0 )); then
+    mh_log "Dangling images → mac-health docker prune images --dry-run"
+  fi
+  if (( exited_n > 0 || dangling_net_n > 0 )); then
+    mh_warn "Exited containers / dangling nets are never removed by mac-health"
+  fi
 
   mh_section "Volumes (inspect only)"
   printf "  %-8s %-10s %s\n" "STATE" "DB-LIKE" "NAME"

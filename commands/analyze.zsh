@@ -214,7 +214,10 @@ for item in bloat_sorted:
     if item["bytes"] < Gi:
         continue
     key = item["key"]
-    if key in ("all-caches", "xcode-derived", "xcode-archives", "core-simulator"):
+    if key in ("all-caches", "xcode-archives", "core-simulator"):
+        continue
+    if key == "xcode-derived":
+        add("mac-health xcode clean-derived", "DerivedData ~%s" % item["human"])
         continue
     cmd = cmd_for.get(key)
     if not cmd:
@@ -242,8 +245,8 @@ if disk_pct_i is not None and disk_pct_i >= 75 and len(actions) < 3:
     add("mac-health disk bloat", "Data volume at %s%% — review fat paths" % disk_pct_i)
 
 for item in bloat_sorted[:5]:
-    if item["key"] in ("xcode-derived", "core-simulator", "xcode-archives") and item["bytes"] >= Gi:
-        add("mac-health disk bloat", "Large Xcode/Simulator data — see disk bloat hints")
+    if item["key"] in ("core-simulator", "xcode-archives") and item["bytes"] >= Gi:
+        add("mac-health xcode", "Large Simulator/Archives — inspect then clean manually")
         break
 
 if not actions:
