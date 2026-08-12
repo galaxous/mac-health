@@ -108,6 +108,7 @@ mac-health docker prune images --dry-run  # preview unused images
 mac-health docker prune images # REMOVE unused images only
 mac-health docker quit         # quit Docker Desktop
 mac-health login list          # LaunchAgents / login items
+mac-health maintenance weekly  # light: analyze + optional trash/brew/logs/docker
 mac-health maintenance monthly # guided monthly route
 mac-health projects <root> …   # scan/purge vendor + node_modules (see below)
 mac-health paths               # print central MH_* paths
@@ -133,6 +134,7 @@ mac-health -y --json caches npm
 mac-health -y --json caches logs --older 30
 mac-health --json docker status
 mac-health --json docker volumes
+mac-health --json maintenance weekly
 mac-health --json maintenance report
 mac-health -y --json trash empty
 mac-health -y --json xcode clean-derived

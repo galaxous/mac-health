@@ -50,10 +50,11 @@ When `MH_JSON=1` (via `--json`):
 | `docker prune` / `prune images` | `{action:"prune", target:"images", dry_run}`; only unused images |
 | `docker quit` | `{action, ok, …}` |
 | `login list\|checkpoint` | agents / login items |
+| `maintenance weekly` | nested `analyze` + `trash` + `suggested` (inspect; no mutations) |
 | `maintenance report` | nested `caches` + `docker` documents |
 | `purge` | `{ok, …}` (requires `-y`) |
 
-`maintenance monthly` stays a guided human route; prefer `maintenance report --json` for automation.
+`maintenance monthly` stays a guided human route; prefer `maintenance weekly --json` or `maintenance report --json` for automation.
 
 ### Examples
 
@@ -73,6 +74,7 @@ mac-health --json docker volumes
 mac-health --json docker prune images --dry-run
 mac-health -y --json docker prune images
 mac-health --json login list
+mac-health --json maintenance weekly
 mac-health --json maintenance report
 mac-health -y --json trash empty
 mac-health -y --json xcode clean-derived
